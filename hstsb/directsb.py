@@ -5,11 +5,14 @@ Module for directly estimating SB by adding up the light of stars in the Brown
 catalog and transforming that total light into an SDSS magnitude.
 """
 
+from collections import defaultdict
+
 import numpy as np
 from astropy.wcs import WCS
 from astropy.coordinates import ICRS
 from astropy import units as u
 from astropy import log
+from astropy.table import Table
 import astropy.io.fits as fits
 
 from sqlalchemy.orm import aliased
@@ -26,6 +29,21 @@ from hstsb.phottrans import VRI_from_ACS, gri_from_VRI
 def main():
     log.setLevel("INFO")
     fieldname = "disk"
+    fields = ('halo11', 'stream', 'disk', 'halo21', 'halo35a', 'halo35b')
+    cols = defaultdict(list)
+    for fieldname in fields:
+        result = process_field(fieldname)
+        for k, v in result.iteritems():
+            cols[k].append(v)
+    print cols
+    names = ['name', 'radius', '606', '814', 'g', 'r', 'i']
+    collist = [cols[k] for k in names]
+    tbl = Table(collist, names=names)
+    tbl.write("direct_brown_sb.txt", format='ascii.commented_header')
+
+
+def process_field(fieldname):
+    """Compute SB for a single Brown HST field."""
     data = load_photometry(fieldname)
     A = compute_area(fieldname)
     sb606 = compute_sb(data['cfrac'], data['m606'], A)
@@ -43,6 +61,8 @@ def main():
     log.info("mu_g: {:.6f}".format(g))
     log.info("mu_r: {:.6f}".format(r))
     log.info("mu_i: {:.6f}".format(i))
+    return {"name": fieldname, "radius": rad.kpc, "606": sb606, "814": sb814,
+            "g": g, "r": r, "i": i}
 
 
 def load_photometry(fieldname):

@@ -6,6 +6,9 @@ catalog and transforming that total light into an SDSS magnitude.
 """
 
 import numpy as np
+from astropy.wcs import WCS
+from astropy.coordinates import ICRS
+from astropy import units as u
 from astropy import log
 import astropy.io.fits as fits
 
@@ -16,14 +19,18 @@ from starplex.database import Catalog, Bandpass, CatalogStar, Observation
 
 from m31hst import brown_image_path, brown_phot_path
 
+from hstsb.galradii import correct_rgc
+
 
 def main():
     log.setLevel("INFO")
-    fieldname = "halo35b"
+    fieldname = "disk"
     data = load_photometry(fieldname)
     A = compute_area(fieldname)
     sb606 = compute_sb(data['cfrac'], data['m606'], A)
     sb814 = compute_sb(data['cfrac'], data['m814'], A)
+    R = compute_gal_radius(fieldname)
+    log.info("R {:.4f} kpc".format(R.kpc))
     log.info("mu_606: {:.6f}".format(sb606))
     log.info("mu_814: {:.6f}".format(sb814))
 
@@ -61,8 +68,6 @@ def compute_area(fieldname):
     pix_scale = np.sqrt(header['CD1_1'] ** 2. + header['CD1_2'] ** 2.) * 3600.
     # Masked pixels have values of 1, so nx*ny - sum(msk) gives N unmasked pix
     npix = msk_pixels.shape[0] * msk_pixels.shape[1] - msk_pixels.sum()
-    print "npix", npix
-    print "pix_scale", pix_scale
     return npix * pix_scale
 
 
@@ -78,6 +83,18 @@ def compute_sb(cfrac, mag, A):
     s = np.where(cfrac > 0.)[0]
     sb = -2.5 * np.log10(np.sum(10. ** (-0.4 * mag[s]) / cfrac[s]) / A)
     return sb
+
+
+def compute_gal_radius(fieldname):
+    """Compute galactocentric radius for this ACS field."""
+    image_path = brown_image_path(fieldname, "f606w")
+    header = fits.getheader(image_path)
+    wcs = WCS(header)
+    footprint = wcs.calcFootprint()
+    ra0 = np.array([v[0] for v in footprint]).mean()
+    dec0 = np.array([v[1] for v in footprint]).mean()
+    coord = ICRS(ra=ra0, dec=dec0, unit=(u.degree, u.degree))
+    return correct_rgc(coord)
 
 
 if __name__ == '__main__':

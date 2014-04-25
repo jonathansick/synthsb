@@ -78,7 +78,7 @@ def compute_area(fieldname):
     pix_scale = np.sqrt(header['CD1_1'] ** 2. + header['CD1_2'] ** 2.) * 3600.
     # Masked pixels have values of 1, so nx*ny - sum(msk) gives N unmasked pix
     npix = msk_pixels.shape[0] * msk_pixels.shape[1] - msk_pixels.sum()
-    return npix * pix_scale
+    return npix * pix_scale ** 2.
 
 
 def compute_sb(cfrac, mag, A):

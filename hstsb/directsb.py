@@ -5,12 +5,16 @@ Module for directly estimating SB by adding up the light of stars in the Brown
 catalog and transforming that total light into an SDSS magnitude.
 """
 
-from astropy import log
 import numpy as np
+from astropy import log
+import astropy.io.fits as fits
 
 from sqlalchemy.orm import aliased
 from starplex.database import connect_to_server, Session
+
 from starplex.database import Catalog, Bandpass, CatalogStar, Observation
+
+from m31hst import brown_image_path, brown_phot_path
 
 
 def main():
@@ -50,12 +54,30 @@ def load_photometry(fieldname):
 
 def compute_area(fieldname):
     """Get the unmasked area for this field from the MSK image."""
-    pass
+    image_path = brown_image_path(fieldname, "f606w")
+    msk_path = brown_phot_path(fieldname, kind="msk")
+    header = fits.getheader(image_path)
+    msk_pixels = fits.getdata(msk_path)
+    pix_scale = np.sqrt(header['CD1_1'] ** 2. + header['CD1_2'] ** 2.) * 3600.
+    # Masked pixels have values of 1, so nx*ny - sum(msk) gives N unmasked pix
+    npix = msk_pixels.shape[0] * msk_pixels.shape[1] - msk_pixels.sum()
+    print "npix", npix
+    print "pix_scale", pix_scale
+    return npix * pix_scale
 
 
 def compute_sb(cfrac, mag, A):
-    """Compute a surface brightness for a single bandpass."""
-    pass
+    """Compute a surface brightness for a single bandpass from the sum of
+    fluxes of individual stars, given a completeness estimate.
+
+    Returns
+    -------
+    sb : float
+        mag per square arcsecond
+    """
+    s = np.where(cfrac > 0.)[0]
+    sb = -2.5 * np.log10(np.sum(10. ** (-0.4 * mag[s]) / cfrac[s]) / A)
+    return sb
 
 
 if __name__ == '__main__':

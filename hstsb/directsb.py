@@ -20,6 +20,7 @@ from starplex.database import Catalog, Bandpass, CatalogStar, Observation
 from m31hst import brown_image_path, brown_phot_path
 
 from hstsb.galradii import correct_rgc
+from hstsb.phottrans import VRI_from_ACS, gri_from_VRI
 
 
 def main():
@@ -29,10 +30,19 @@ def main():
     A = compute_area(fieldname)
     sb606 = compute_sb(data['cfrac'], data['m606'], A)
     sb814 = compute_sb(data['cfrac'], data['m814'], A)
-    R = compute_gal_radius(fieldname)
-    log.info("R {:.4f} kpc".format(R.kpc))
+    V, R, I = VRI_from_ACS(sb606, sb814)
+    g, r, i = gri_from_VRI(V, R, I)
+    rad = compute_gal_radius(fieldname)
+    log.info(fieldname)
+    log.info("R {:.4f} kpc".format(rad.kpc))
     log.info("mu_606: {:.6f}".format(sb606))
     log.info("mu_814: {:.6f}".format(sb814))
+    log.info("mu_V: {:.6f}".format(V))
+    log.info("mu_R: {:.6f}".format(R))
+    log.info("mu_I: {:.6f}".format(I))
+    log.info("mu_g: {:.6f}".format(g))
+    log.info("mu_r: {:.6f}".format(r))
+    log.info("mu_i: {:.6f}".format(i))
 
 
 def load_photometry(fieldname):

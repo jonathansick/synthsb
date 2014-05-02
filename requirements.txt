@@ -1,0 +1,11 @@
+numpy
+Cython
+astropy>=0.3.1
+wsgiref>=0.1.2
+psycopg2>=2.5.2
+SQLAlchemy>=0.9.4
+GeoAlchemy2
+decorator>=3.4.0
+-e git+git@github.com:jonathansick/m31hst.git#egg=m31hst-master
+-e git+git@github.com:jonathansick/starplex.git#egg=starplex-master
+-e .

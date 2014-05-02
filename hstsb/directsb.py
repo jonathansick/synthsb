@@ -5,99 +5,51 @@ Module for directly estimating SB by adding up the light of stars in the Brown
 catalog and transforming that total light into an SDSS magnitude.
 """
 
-from collections import defaultdict
 
 import numpy as np
 from astropy.wcs import WCS
 from astropy.coordinates import ICRS
 from astropy import units as u
 from astropy import log
-from astropy.table import Table
-import astropy.io.fits as fits
 
 from sqlalchemy.orm import aliased
 from starplex.database import connect_to_server, Session
-
 from starplex.database import Catalog, Bandpass, CatalogStar, Observation
 
-from m31hst import brown_image_path, brown_phot_path
-
 from hstsb.galradii import correct_rgc
-from hstsb.phottrans import VRI_from_ACS, gri_from_VRI
 
 
-def main():
-    log.setLevel("INFO")
-    fieldname = "disk"
-    fields = ('halo11', 'stream', 'disk', 'halo21', 'halo35a', 'halo35b')
-    cols = defaultdict(list)
-    for fieldname in fields:
-        result = process_field(fieldname)
-        for k, v in result.iteritems():
-            cols[k].append(v)
-    print cols
-    names = ['name', 'radius', '606', '814', 'g', 'r', 'i']
-    collist = [cols[k] for k in names]
-    tbl = Table(collist, names=names)
-    tbl.write("direct_brown_sb.txt", format='ascii.commented_header')
-
-
-def process_field(fieldname):
-    """Compute SB for a single Brown HST field."""
-    data = load_photometry(fieldname)
-    A = compute_area(fieldname)
-    sb606 = compute_sb(data['cfrac'], data['m606'], A)
-    sb814 = compute_sb(data['cfrac'], data['m814'], A)
-    V, R, I = VRI_from_ACS(sb606, sb814)
-    g, r, i = gri_from_VRI(V, R, I)
-    rad = compute_gal_radius(fieldname)
-    log.info(fieldname)
-    log.info("R {:.4f} kpc".format(rad.kpc))
-    log.info("mu_606: {:.6f}".format(sb606))
-    log.info("mu_814: {:.6f}".format(sb814))
-    log.info("mu_V: {:.6f}".format(V))
-    log.info("mu_R: {:.6f}".format(R))
-    log.info("mu_I: {:.6f}".format(I))
-    log.info("mu_g: {:.6f}".format(g))
-    log.info("mu_r: {:.6f}".format(r))
-    log.info("mu_i: {:.6f}".format(i))
-    return {"name": fieldname, "radius": rad.kpc, "606": sb606, "814": sb814,
-            "g": g, "r": r, "i": i}
-
-
-def load_photometry(fieldname):
+def load_photometry(fieldname, instrument, band1, band2, server="marvin"):
     """Get photometry from starplex."""
-    connect_to_server('marvin', echo=True)
+    connect_to_server(server, echo=True)
     session = Session()
-    mag606obs = aliased(Observation)
-    mag814obs = aliased(Observation)
-    bp606 = aliased(Bandpass)
-    bp814 = aliased(Bandpass)
-    q = session.query(CatalogStar.cfrac, mag606obs.mag, mag814obs.mag)\
-            .join(mag606obs, CatalogStar.observations)\
-            .join(mag814obs, CatalogStar.observations)\
+    mag1obs = aliased(Observation)
+    mag2obs = aliased(Observation)
+    bp1 = aliased(Bandpass)
+    bp2 = aliased(Bandpass)
+    q = session.query(CatalogStar.cfrac, mag1obs.mag, mag2obs.mag)\
+            .join(mag1obs, CatalogStar.observations)\
+            .join(mag2obs, CatalogStar.observations)\
             .join(Catalog)\
             .filter(Catalog.name == fieldname)\
-            .join(bp606, mag606obs.bandpass)\
-            .filter(bp606.name == "f606w")\
-            .join(bp814, mag814obs.bandpass)\
-            .filter(bp814.name == "f814w")
-    dt = [('cfrac', np.float), ('m606', np.float), ('m814', np.float)]
+            .filter(Catalog.instrument == instrument)\
+            .join(bp1, mag1obs.bandpass)\
+            .filter(bp1.name == band1)\
+            .join(bp2, mag2obs.bandpass)\
+            .filter(bp2.name == band2)
+    dt = [('cfrac', np.float), ('m1', np.float), ('m2', np.float)]
     data = np.array(q.all(), dtype=np.dtype(dt))
-    log.info("Field {0} has {1:d} stars".format(fieldname, data.shape[0]))
+    log.info("Field {0} {2} has {1:d} stars".
+        format(fieldname, data.shape[0], instrument))
     session.close()
     return data
 
 
-def compute_area(fieldname):
+def compute_area(msk_image, header):
     """Get the unmasked area for this field from the MSK image."""
-    image_path = brown_image_path(fieldname, "f606w")
-    msk_path = brown_phot_path(fieldname, kind="msk")
-    header = fits.getheader(image_path)
-    msk_pixels = fits.getdata(msk_path)
     pix_scale = np.sqrt(header['CD1_1'] ** 2. + header['CD1_2'] ** 2.) * 3600.
     # Masked pixels have values of 1, so nx*ny - sum(msk) gives N unmasked pix
-    npix = msk_pixels.shape[0] * msk_pixels.shape[1] - msk_pixels.sum()
+    npix = msk_image.shape[0] * msk_image.shape[1] - msk_image.sum()
     return npix * pix_scale ** 2.
 
 
@@ -115,17 +67,13 @@ def compute_sb(cfrac, mag, A):
     return sb
 
 
-def compute_gal_radius(fieldname):
-    """Compute galactocentric radius for this ACS field."""
-    image_path = brown_image_path(fieldname, "f606w")
-    header = fits.getheader(image_path)
+def compute_field_coord(header):
+    """Compute galactocentric radius for this ACS field as well as the
+    central RA, Dec.
+    """
     wcs = WCS(header)
     footprint = wcs.calcFootprint()
     ra0 = np.array([v[0] for v in footprint]).mean()
     dec0 = np.array([v[1] for v in footprint]).mean()
     coord = ICRS(ra=ra0, dec=dec0, unit=(u.degree, u.degree))
-    return correct_rgc(coord)
-
-
-if __name__ == '__main__':
-    main()
+    return ra0, dec0, correct_rgc(coord)

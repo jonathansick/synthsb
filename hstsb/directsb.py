@@ -27,7 +27,8 @@ def load_photometry(fieldname, instrument, band1, band2, server="marvin"):
     mag2obs = aliased(Observation)
     bp1 = aliased(Bandpass)
     bp2 = aliased(Bandpass)
-    q = session.query(CatalogStar.cfrac, mag1obs.mag, mag2obs.mag)\
+    q = session.query(CatalogStar.cfrac, mag1obs.mag, mag2obs.mag_err,
+                mag2obs.mag, mag2obs.mag_err)\
             .join(mag1obs, CatalogStar.observations)\
             .join(mag2obs, CatalogStar.observations)\
             .join(Catalog)\
@@ -37,7 +38,8 @@ def load_photometry(fieldname, instrument, band1, band2, server="marvin"):
             .filter(bp1.name == band1)\
             .join(bp2, mag2obs.bandpass)\
             .filter(bp2.name == band2)
-    dt = [('cfrac', np.float), ('m1', np.float), ('m2', np.float)]
+    dt = [('cfrac', np.float), ('m1', np.float), ('e1', np.float),
+            ('m2', np.float), ('e2', np.float)]
     data = np.array(q.all(), dtype=np.dtype(dt))
     log.info("Field {0} {2} has {1:d} stars".
         format(fieldname, data.shape[0], instrument))
@@ -53,7 +55,15 @@ def compute_area(msk_image, header):
     return npix * pix_scale ** 2.
 
 
-def compute_sb(cfrac, mag, A):
+def compute_area_from_weights(weight_image, header):
+    """Get area of pixels with weight > 0."""
+    pix_scale = np.sqrt(header['CD1_1'] ** 2. + header['CD1_2'] ** 2.) * 3600.
+    badpix = np.where(weight_image <= 0.)[0]
+    npix = weight_image.shape[0] * weight_image.shape[1] - len(badpix)
+    return npix * pix_scale ** 2.
+
+
+def compute_sb(mag, mag_err, cfrac, A):
     """Compute a surface brightness for a single bandpass from the sum of
     fluxes of individual stars, given a completeness estimate.
 
@@ -61,10 +71,19 @@ def compute_sb(cfrac, mag, A):
     -------
     sb : float
         mag per square arcsecond
+    sb_err : float
+        mag uncertainty per square arcsecond
     """
+    # Compute surface brightness given stars with a real completeness
     s = np.where(cfrac > 0.)[0]
     sb = -2.5 * np.log10(np.sum(10. ** (-0.4 * mag[s]) / cfrac[s]) / A)
-    return sb
+
+    # Compute uncertainty given mag_err
+    F = 10. ** (-0.4 * mag[s]) / cfrac[s]
+    # gradient of d mu / d m_i
+    grad = F / F.sum()
+    sb_err = np.sqrt(np.sum((grad * mag_err[s]) ** 2.))
+    return sb, sb_err
 
 
 def compute_field_coord(header):

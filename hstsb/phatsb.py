@@ -11,6 +11,7 @@ from astropy import log
 import astropy.io.fits as fits
 from astropy.table import Table
 
+from starplex.utils.timer import Timer
 from m31hst import phat_field_path
 from androphotsys import ACS_475_814_to_BVRI, BVRI_to_ugri
 
@@ -40,7 +41,10 @@ def process_acs(brick):
     """Process ACS observations of this brick."""
     cols = defaultdict(list)
     for fieldnum in xrange(1, 19):
-        result = process_acs_field(brick, fieldnum)
+        with Timer() as timer:
+            result = process_acs_field(brick, fieldnum)
+        log.info("Processed phat_acs b{0:02d}f{1:02d} in {2:.2f} minutes".
+                format(brick, fieldnum, timer.interval / 60.))
         for k, v in result.iteritems():
             cols[k].append(v)
     names = ['name', 'brick', 'field', 'ra', 'dec', 'radius',
@@ -68,7 +72,6 @@ def process_acs_field(brick, fieldnum):
         sb814, e814, zp='VEGAMAG')
     u, u_e, g, g_e, r, r_e, i, i_e = BVRI_to_ugri(B, Be, V, Ve, R, Re, I, Ie)
     ra0, dec0, rad = compute_field_coord(header)
-    log.info(fieldname)
     return {"name": fieldname, "brick": brick, "field": fieldnum,
             "ra": ra0, "dec": dec0, "radius": rad.kpc,
             "f475w": sb475, "f814w": sb814, "g": g, "r": r, "i": i,

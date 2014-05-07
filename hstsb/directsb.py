@@ -19,6 +19,10 @@ from starplex.database import Catalog, Bandpass, CatalogStar, Observation
 from hstsb.galradii import correct_rgc
 
 
+class NoDataError(BaseException):
+    pass
+
+
 def load_photometry(fieldname, instrument, band1, band2, server="marvin"):
     """Get photometry from starplex."""
     connect_to_server(server, echo=True)
@@ -44,6 +48,8 @@ def load_photometry(fieldname, instrument, band1, band2, server="marvin"):
     log.info("Field {0} {2} has {1:d} stars".
         format(fieldname, data.shape[0], instrument))
     session.close()
+    if len(data) == 0:
+        raise NoDataError
     return data
 
 

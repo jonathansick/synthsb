@@ -16,7 +16,7 @@ from m31hst import phat_field_path
 from androphotsys import ACS_475_814_to_BVRI, BVRI_to_ugri
 
 from hstsb.directsb import load_photometry, compute_field_coord, \
-    compute_sb, compute_area_from_weights
+    compute_sb, compute_area_from_weights, NoDataError
 
 
 def main():
@@ -42,7 +42,10 @@ def process_acs(brick):
     cols = defaultdict(list)
     for fieldnum in xrange(1, 19):
         with Timer() as timer:
-            result = process_acs_field(brick, fieldnum)
+            try:
+                result = process_acs_field(brick, fieldnum)
+            except NoDataError:
+                continue
         log.info("Processed phat_acs b{0:02d}f{1:02d} in {2:.2f} minutes".
                 format(brick, fieldnum, timer.interval / 60.))
         for k, v in result.iteritems():
@@ -84,7 +87,10 @@ def process_ir(brick):
     cols = defaultdict(list)
     for fieldnum in xrange(1, 19):
         with Timer() as timer:
-            result = process_ir_field(brick, fieldnum)
+            try:
+                result = process_ir_field(brick, fieldnum)
+            except NoDataError:
+                continue
         log.info("Processed phat_ir b{0:02d}f{1:02d} in {2:.2f} minutes".
                 format(brick, fieldnum, timer.interval / 60.))
         for k, v in result.iteritems():
@@ -121,7 +127,10 @@ def process_uv(brick):
     cols = defaultdict(list)
     for fieldnum in xrange(1, 19):
         with Timer() as timer:
-            result = process_uv_field(brick, fieldnum)
+            try:
+                result = process_uv_field(brick, fieldnum)
+            except NoDataError:
+                continue
         log.info("Processed phat_uv b{0:02d}f{1:02d} in {2:.2f} minutes".
                 format(brick, fieldnum, timer.interval / 60.))
         for k, v in result.iteritems():

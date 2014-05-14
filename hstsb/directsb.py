@@ -28,7 +28,7 @@ def load_photometry(fieldname, instrument, band1, band2, server="marvin"):
     connect_to_server(server, echo=True)
     session = Session()
     # potentially a factor 10 speed gain with this
-    session.execute('SET ENABLE_NESTLOOP TO FALSE')
+    # session.execute('SET ENABLE_NESTLOOP TO FALSE')
     mag1obs = aliased(Observation)
     mag2obs = aliased(Observation)
     bp1 = aliased(Bandpass)
@@ -49,7 +49,7 @@ def load_photometry(fieldname, instrument, band1, band2, server="marvin"):
     data = np.array(q.all(), dtype=np.dtype(dt))
     log.info("Field {0} {2} has {1:d} stars".
         format(fieldname, data.shape[0], instrument))
-    session.execute('SET ENABLE_NESTLOOP TO TRUE')
+    # session.execute('SET ENABLE_NESTLOOP TO TRUE')
     session.close()
     if len(data) == 0:
         raise NoDataError

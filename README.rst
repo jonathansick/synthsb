@@ -1,8 +1,8 @@
-=====
-hstsb
-=====
+=======
+synthsb
+=======
 
-Estimate Surface Brightness in HST Fields observed by Brown et al.
+Estimate Surface Brightness in M31 from resolved star catalogs (PHAT, Brown et al, ANDROIDS).
 
 Info
 ----

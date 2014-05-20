@@ -13,7 +13,7 @@ from astropy.table import Table
 from m31hst import brown_image_path, brown_phot_path
 from androphotsys import ACS_606_814_to_VRI, VRI_to_gri
 
-from hstsb.directsb import load_photometry, compute_field_coord, \
+from synthsb.directsb import load_photometry, compute_field_coord, \
     compute_sb, compute_area
 
 

@@ -15,7 +15,7 @@ from starplex.utils.timer import Timer
 from m31hst import phat_field_path
 from androphotsys import ACS_475_814_to_BVRI, BVRI_to_ugri
 
-from hstsb.directsb import load_photometry, compute_field_coord, \
+from synthsb.directsb import load_photometry, compute_field_coord, \
     compute_sb, compute_area_from_weights, NoDataError
 
 

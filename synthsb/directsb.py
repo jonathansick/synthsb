@@ -16,7 +16,7 @@ from sqlalchemy.orm import aliased
 from starplex.database import connect_to_server, Session
 from starplex.database import Catalog, Bandpass, CatalogStar, Observation
 
-from hstsb.galradii import correct_rgc
+from synthsb.galradii import correct_rgc
 
 
 class NoDataError(BaseException):

@@ -13,7 +13,6 @@ from astropy.table import Table
 
 from starplex.utils.timer import Timer
 from m31hst import phat_field_path
-from androphotsys import ACS_475_814_to_BVRI, BVRI_to_ugri
 
 from synthsb.directsb import load_photometry, compute_field_coord, \
     compute_sb, compute_area_from_weights, NoDataError
@@ -52,7 +51,7 @@ def process_acs(brick):
             cols[k].append(v)
     names = ['name', 'brick', 'field', 'ra', 'dec', 'radius',
             'f475w', 'f475w_err',
-            'f814w', 'f814w_err', 'g', 'g_err', 'r', 'r_err', 'i', 'i_err']
+            'f814w', 'f814w_err']
     collist = [cols[k] for k in names]
     tbl = Table(collist, names=names)
     tbl.write("phat_acs_sb_{0:02d}.txt".format(brick),
@@ -74,15 +73,11 @@ def process_acs_field(brick, fieldnum):
     
     sb475, e475 = compute_sb(data['m1'], data['e1'], data['cfrac'], A)
     sb814, e814 = compute_sb(data['m2'], data['e2'], data['cfrac'], A)
-    B, Be, V, Ve, R, Re, I, Ie = ACS_475_814_to_BVRI(sb475, e475,
-        sb814, e814, zp='VEGAMAG')
-    u, u_e, g, g_e, r, r_e, i, i_e = BVRI_to_ugri(B, Be, V, Ve, R, Re, I, Ie)
     ra0, dec0, rad = compute_field_coord(header)
     return {"name": fieldname, "brick": brick, "field": fieldnum,
             "ra": ra0, "dec": dec0, "radius": rad.kpc,
-            "f475w": sb475, "f814w": sb814, "g": g, "r": r, "i": i,
-            "f475w_err": e475, "f814w_err": e814, "g_err": g_e, "r_err": r_e,
-            "i_err": i_e, "u": u, "u_err": u_e}
+            "f475w": sb475, "f814w": sb814,
+            "f475w_err": e475, "f814w_err": e814}
 
 
 def process_ir(brick):

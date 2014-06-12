@@ -6,6 +6,11 @@ SB computations from WIRCam fields.
 To process all 07B fields::
 
     python synthsb/synthsb/wircamsb.py M31-{1..27}
+
+To process all fields::
+
+    python synthsb/synthsb/wircamsb.py M31-{1..27} M31-{47..71} \
+        M31-sky-{28..31} M31-skyr-{01,13,27,39} --no-intercal
 """
 
 import argparse

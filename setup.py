@@ -1,13 +1,13 @@
 #!/usr/bin/env python
 # encoding: utf-8
 from setuptools import setup, find_packages
-
+import glob
 
 setup(
     name="synthsb",
     version="0.1",
     packages=find_packages(),
-    scripts=['scripts/*.py'],
+    scripts=glob.glob('scripts/*.py'),
 
     # Project uses reStructuredText, so ensure that the docutils get
     # installed or upgraded on the target machine

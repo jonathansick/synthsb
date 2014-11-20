@@ -88,6 +88,7 @@ def main():
     flux_err_Ks = np.sqrt(varsum_Ks)
     pixel_table['n_stars'] = star_count
     pixel_table['synth_J'] = fluxsum_J
+    pixel_table['synth_Ks'] = fluxsum_Ks
     pixel_table['synth_J_err'] = flux_err_J
     pixel_table['synth_Ks_err'] = flux_err_Ks
     pixel_table.write(args.output_path,
